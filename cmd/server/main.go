@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"time"
 
 	hellopb "example/hello/pkg/grpc"
 
@@ -26,6 +27,21 @@ func (s *myServer) Hello(ctx context.Context, req *hellopb.HelloRequest) (*hello
 	return &hellopb.HelloResponse{
 		Message: fmt.Sprintf("🐔Hello, %s!", req.GetName()),
 	}, nil
+}
+
+func (s *myServer) HelloServerStream(req *hellopb.HelloRequest, stream hellopb.GreetingService_HelloServerStreamServer) error {
+	// 5回返す
+	resCount := 5
+	fmt.Println(resCount, "回レスポンスを返します..", req.GetName())
+	for i := 0; i < resCount; i++ {
+		if err := stream.Send(&hellopb.HelloResponse{
+			Message: fmt.Sprintf("[%d] Hello, %s!", i, req.GetName()),
+		}); err != nil {
+			return err
+		}
+		time.Sleep(time.Second * 1)
+	}
+	return nil
 }
 
 // 自作サービス構造体のコンストラクタを定義
