@@ -16,7 +16,12 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
+
+	"google.golang.org/grpc/health"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 )
+
+var healthSrv *health.Server
 
 type myServer struct {
 	hellopb.UnimplementedGreetingServiceServer
@@ -26,6 +31,9 @@ func (s *myServer) Hello(ctx context.Context, req *hellopb.HelloRequest) (*hello
 	// リクエストからnameフィールドを取り出して
 	// "Hello, [名前]!"というレスポンスを返す
 	fmt.Println("Helloが呼ばれました..", req.GetName())
+
+	// 一度このメソッドが呼ばれたらサービスステータスをUNKNOWNにする（テスト）
+	healthSrv.SetServingStatus("myapp.GreetingService", healthpb.HealthCheckResponse_UNKNOWN)
 	return &hellopb.HelloResponse{
 		Message: fmt.Sprintf("🐔Hello, %s!", req.GetName()),
 	}, nil
@@ -36,6 +44,7 @@ func (s *myServer) HelloServerStream(req *hellopb.HelloRequest, stream hellopb.G
 	resCount := 5
 	fmt.Println(resCount, "回レスポンスを返します..", req.GetName())
 	for i := 0; i < resCount; i++ {
+		fmt.Println(i+1, "回目のレスポンスを返しました。")
 		if err := stream.Send(&hellopb.HelloResponse{
 			Message: fmt.Sprintf("[%d] Hello, %s!", i, req.GetName()),
 		}); err != nil {
@@ -82,6 +91,14 @@ func main() {
 	// 3. gRPCサーバーにGreetingServiceを登録
 	// hellopb.RegisterGreetingServiceServer(s, [サーバーに登録するサービス])
 	hellopb.RegisterGreetingServiceServer(s, NewMyServer())
+
+	healthSrv = health.NewServer()
+	healthpb.RegisterHealthServer(s, healthSrv)
+	healthSrv.SetServingStatus("myapp.GreetingService", healthpb.HealthCheckResponse_SERVING)
+	healthSrv.SetServingStatus("x", healthpb.HealthCheckResponse_SERVING)
+	healthSrv.SetServingStatus("", healthpb.HealthCheckResponse_SERVING)
+
+	//healthSrv.SetServingStatus("myapp.GreetingService", healthpb.HealthCheckResponse_NOT_SERVING)
 
 	// 4. サーバーリフレクションの設定
 	reflection.Register(s)
