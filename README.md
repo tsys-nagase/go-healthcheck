@@ -8,8 +8,7 @@ gRPCの簡単なサンプルコードです。
 - /hello
 - /hello/{name}
 - /hello/{name}/age/{age}
-
-
+- /status
 
 ## 起動方法
 
